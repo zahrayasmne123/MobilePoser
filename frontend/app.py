@@ -1,10 +1,11 @@
-import streamlit as st
-import pandas as pd
-import plotly.express as px
+import streamlit as st # type: ignore
 from pathlib import Path
-import cv2
+import cv2 # type: ignore
 import base64
-import streamlit.components.v1 as components
+import streamlit.components.v1 as components # type: ignore
+import os
+import torch 
+from process_sensor_data.imuDataPipeline import full_sensor_pipeline
 
 
 # Set page configuration
@@ -14,6 +15,115 @@ st.set_page_config(
     layout="wide"
 )
 
+
+# Define color scheme
+PRIMARY_COLOR = "#0066cc"
+SECONDARY_COLOR = "#ff9900"
+BACKGROUND_COLOR = "#f0f2f6"
+
+# Custom CSS with multiple header style options
+st.markdown("""
+    <style>
+    /* Base styles */
+    .main {
+        background-color: #f0f2f6;
+    }
+    .stButton>button {
+        background-color: #0066cc;
+        color: white;
+    }
+    .stTextInput>div>div>input {
+        background-color: white;
+    }
+    
+    /* Sophisticated header styles */
+    .header-modern {
+        background-color: white;
+        padding: 2rem 3rem;
+        margin: -4rem -4rem 2rem -4rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .header-split {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        padding: 1rem;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    }
+    
+    .header-minimal {
+        padding: 2rem;
+        border-bottom: 2px solid #eaeaea;
+        margin-bottom: 2rem;
+    }
+    
+    .header-image {
+        max-width: 100%;
+        height: auto;
+        object-fit: contain;
+    }
+    
+    .title-modern {
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        font-size: 2.5rem;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.5rem;
+        color: #1a1a1a;
+    }
+    
+    .subtitle-modern {
+        font-family: 'Inter', sans-serif;
+        font-weight: 400;
+        font-size: 1.1rem;
+        color: #666666;
+        letter-spacing: 0.01em;
+        line-height: 1.5;
+    }
+    
+    .animated-border {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .animated-border::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, #0066cc, #00cc99);
+        transform: translateX(-100%);
+        animation: border-slide 2s ease-in-out infinite;
+    }
+    
+    @keyframes border-slide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+# Render Data Collection HTML: Logic for creating the ensens data collection
+# 1. CSS for rendering the esens data collection
+# 2. esense-container div - Makes buttons for connecting, recording, stopping recording and downloading data
+# 3. Collecting Data
+#     * calculateChecksum: error checking in data transmission from earbuds to  app 
+#     * startSamplingCommand: Starts IMU sampling at 50Hz, returning a byte array of 0x53 and calculated checksum.
+#     * stopSamplingCommand: Stops IMU sampling, returning a byte array with (0x00) to indicate stopping.
+#     * parseIMUData: Converts raw IMU data into 16 bit integers by scalaing and adding timestamps 
+#     * downloadData: Triggers download of CSV file with parsed IMU data and timestamp
+# 4. Data Logging 
+#     * connectToESense: Creates bluetooth connection with device beginning with eSense, connects to its GATT server,
+#     gets the specific service and characteristics needed for IMU data, and enables the start button once connecte
+#     * startSampling: Initialise IMU data sampling, enabling notifications and updates UI 
+#     * stopSampling: Stops IMU data sampling 
+# 5. Main data handing
+#     * handleIMUData: takes raw data and if recording is true, add parsed data to an array to update frontend counter 
+#     on how many samples have been collected.
 
 def render_data_collection_html():
     return """
@@ -238,82 +348,20 @@ def render_data_collection_html():
     </div>
     """
 
-
+# """ Create Sensor Section: Section for managing different sensor devices (Phone Sensors, Wrist Sensors, eSense Earbuds)"""
 def create_sensor_section():
-    # Add a descriptive header with context
     st.header("Data Collection Hub")
     st.write("Connect and manage your sensor devices in one place. Follow the guided steps for each device.")
     
-    # Create tabs with more descriptive labels
     tabs = st.tabs(["📱 Phone Sensors", "⌚ Wrist Sensors", "🎧 eSense Earbuds"])
     
-    # Initialize session state for tracking progress
+    #Ssession state for tracking progress initialised 
     if 'wrist_step' not in st.session_state:
         st.session_state.wrist_step = 0
     if 'phone_step' not in st.session_state:
         st.session_state.phone_step = 0
     if 'esense_step' not in st.session_state:
         st.session_state.esense_step = 0
-        
-    # Wrist Sensors Tab
-    with tabs[1]:
-        st.subheader("MetaSens Wrist Sensors")
-        
-        # Create progress tracking with only two steps
-        steps = ["Install App", "Configure Sensors"]
-        current_step = st.session_state.wrist_step
-        
-        # Show progress indicator if not completed
-        if current_step < len(steps):
-            progress = st.progress(current_step / (len(steps) - 1))
-            st.write(f"Current Step: {steps[current_step]}")
-        
-        # Step content with expanders
-        if current_step == 0:
-            with st.expander("📱 Installation Guide", expanded=True):
-                st.markdown("""
-                ### Getting Started
-                Download the MetaWear app for your device:
-                
-                - [📱 iOS App Store](https://apps.apple.com/us/app/metawear/id1547334547)
-                - [🤖 Google Play Store](https://play.google.com/store/apps/details?id=com.mbientlab.metawear.app)
-                
-                #### Installation Tips:
-                - Ensure Bluetooth is enabled on your device
-                - Allow necessary permissions when prompted
-                - Check for minimum OS requirements
-                """)
-                
-                if st.button("✅ Mark Installation Complete"):
-                    st.session_state.wrist_step = 1
-                    st.rerun()
-                    
-        elif current_step == 1:
-            with st.expander("⚙️ Sensor Configuration", expanded=True):
-                st.markdown("""
-                ### Configure Your Sensors
-                
-                1. Open the MetaWear app
-                2. Set sampling rates:
-                - Accelerometer: 50Hz
-                - Gyroscope: 50Hz
-                3. Verify connection status
-                4. Download csv files 
-                """)
-                
-                if st.button("✅ Configuration Complete"):
-                    st.session_state.wrist_step = 2
-                    st.rerun()
-        
-        # Show completion card when all steps are done
-        elif current_step == 2:
-            st.success("🎉 Setup Complete!")
-            st.info("You have successfully set up the wrist sensors and configured all necessary parameters.")
-            
-            # Add the start over button
-            if st.button("🔄 Start from Beginning"):
-                st.session_state.wrist_step = 0
-                st.rerun()
     
     # Phone Sensors Tab
     with tabs[0]:
@@ -324,7 +372,7 @@ def create_sensor_section():
         
         # Show progress indicator if not completed
         if current_step < len(steps):
-            progress = st.progress(current_step / (len(steps) - 1))
+            st.progress(current_step / (len(steps) - 1))
             st.write(f"Current Step: {steps[current_step]}")
         
         # Step 1: Installation
@@ -387,6 +435,66 @@ def create_sensor_section():
                 st.session_state.phone_step = 0
                 st.rerun() 
     
+    # Wrist Sensors Tab
+    with tabs[1]:
+        st.subheader("MetaSens Wrist Sensors")
+        
+        # Create progress tracking with only two steps
+        steps = ["Install App", "Configure Sensors"]
+        current_step = st.session_state.wrist_step
+        
+        # Show progress indicator if not completed
+        if current_step < len(steps):
+            # progress = st.progress(current_step / (len(steps) - 1))
+            st.write(f"Current Step: {steps[current_step]}")
+        
+        # Step content with expanders
+        if current_step == 0:
+            with st.expander("📱 Installation Guide", expanded=True):
+                st.markdown("""
+                ### Getting Started
+                Download the MetaWear app for your device:
+                
+                - [📱 iOS App Store](https://apps.apple.com/us/app/metawear/id1547334547)
+                - [🤖 Google Play Store](https://play.google.com/store/apps/details?id=com.mbientlab.metawear.app)
+                
+                #### Installation Tips:
+                - Ensure Bluetooth is enabled on your device
+                - Allow necessary permissions when prompted
+                - Check for minimum OS requirements
+                """)
+                
+                if st.button("✅ Mark Installation Complete"):
+                    st.session_state.wrist_step = 1
+                    st.rerun()
+                    
+        elif current_step == 1:
+            with st.expander("⚙️ Sensor Configuration", expanded=True):
+                st.markdown("""
+                ### Configure Your Sensors
+                
+                1. Open the MetaWear app
+                2. Set sampling rates:
+                - Accelerometer: 50Hz
+                - Gyroscope: 50Hz
+                3. Verify connection status
+                4. Download csv files 
+                """)
+                
+                if st.button("✅ Configuration Complete"):
+                    st.session_state.wrist_step = 2
+                    st.rerun()
+        
+        # Show completion card when all steps are done
+        elif current_step == 2:
+            st.success("🎉 Setup Complete!")
+            st.info("You have successfully set up the wrist sensors and configured all necessary parameters.")
+            
+            # Add the start over button
+            if st.button("🔄 Start from Beginning"):
+                st.session_state.wrist_step = 0
+                st.rerun()
+    
     # eSense Tab
     with tabs[2]:
         st.subheader("eSense Earbuds")
@@ -394,119 +502,29 @@ def create_sensor_section():
 
 
 
-# Define color scheme
-PRIMARY_COLOR = "#0066cc"
-SECONDARY_COLOR = "#ff9900"
-BACKGROUND_COLOR = "#f0f2f6"
-
-# Custom CSS with multiple header style options
-st.markdown("""
-    <style>
-    /* Base styles */
-    .main {
-        background-color: #f0f2f6;
-    }
-    .stButton>button {
-        background-color: #0066cc;
-        color: white;
-    }
-    .stTextInput>div>div>input {
-        background-color: white;
-    }
-    
-    /* Sophisticated header styles */
-    .header-modern {
-        background-color: white;
-        padding: 2rem 3rem;
-        margin: -4rem -4rem 2rem -4rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-    
-    .header-split {
-        display: flex;
-        align-items: center;
-        gap: 2rem;
-        padding: 1rem;
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    }
-    
-    .header-minimal {
-        padding: 2rem;
-        border-bottom: 2px solid #eaeaea;
-        margin-bottom: 2rem;
-    }
-    
-    .header-image {
-        max-width: 100%;
-        height: auto;
-        object-fit: contain;
-    }
-    
-    .title-modern {
-        font-family: 'Inter', sans-serif;
-        font-weight: 600;
-        font-size: 2.5rem;
-        letter-spacing: -0.02em;
-        margin-bottom: 0.5rem;
-        color: #1a1a1a;
-    }
-    
-    .subtitle-modern {
-        font-family: 'Inter', sans-serif;
-        font-weight: 400;
-        font-size: 1.1rem;
-        color: #666666;
-        letter-spacing: 0.01em;
-        line-height: 1.5;
-    }
-    
-    .animated-border {
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .animated-border::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 2px;
-        background: linear-gradient(90deg, #0066cc, #00cc99);
-        transform: translateX(-100%);
-        animation: border-slide 2s ease-in-out infinite;
-    }
-    
-    @keyframes border-slide {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-def load_header():
-    """Load and display the TEMPO header GIF"""
-    try:
-        # The path should match where you save the header GIF
-        header_path = Path("tempo_header.gif")
-        if not header_path.exists():
-            st.error("Header GIF not found. Please ensure 'tempo_header.gif' is in the application directory.")
-            return False
+# def load_header():
+#     """Load and display the TEMPO header GIF"""
+#     try:
+#         # The path should match where you save the header GIF
+#         header_path = Path("tempo_header.gif")
+#         if not header_path.exists():
+#             st.error("Header GIF not found. Please ensure 'tempo_header.gif' is in the application directory.")
+#             return False
             
-        # Display the header with custom HTML to ensure proper sizing
-        st.markdown(
-            f"""
-            <div class="header-container">
-                <img src="data:image/gif;base64,{get_base64_encoded_image(header_path)}"
-                     style="width: 100%; height: auto;">
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        return True
-    except Exception as e:
-        st.error(f"Error loading header: {str(e)}")
-        return False
+#         # Display the header with custom HTML to ensure proper sizing
+#         st.markdown(
+#             f"""
+#             <div class="header-container">
+#                 <img src="data:image/gif;base64,{get_base64_encoded_image(header_path)}"
+#                      style="width: 100%; height: auto;">
+#             </div>
+#             """,
+#             unsafe_allow_html=True
+#         )
+#         return True
+#     except Exception as e:
+#         st.error(f"Error loading header: {str(e)}")
+#         return False
 
 def get_base64_encoded_image(image_path):
     """Convert an image file to base64 encoding"""
@@ -582,52 +600,48 @@ def home_page():
 def data_analysis_page():
     """Render the data analysis page"""
     st.title("Data Analysis")
-    
-    
-    # Create tabs for different data inputs
     tab1, tab2, tab3 = st.tabs(["Collect Device Data", "Upload Device Data", "3D Pose Video"])
     
-    # Upload Device Data Tab
-    with tab2:
-
-        st.header("Upload Device Data Analysis")
-        uploaded_file = st.file_uploader("Upload CSV file with wearable device data", type=['csv'])
-        
-        if uploaded_file is not None:
-            try:
-                df = pd.read_csv(uploaded_file)
-                st.success("File successfully uploaded!")
-                
-                # Display data summary
-                st.subheader("Data Summary")
-                st.write(df.head())
-                st.write("Shape of data:", df.shape)
-                
-                # Basic statistics
-                st.subheader("Statistical Summary")
-                st.write(df.describe())
-                
-                # Create visualizations based on the data
-                st.subheader("Data Visualization")
-                if len(df.columns) > 1:
-                    # Allow user to select columns for visualization
-                    x_col = st.selectbox("Select X-axis", df.columns)
-                    y_col = st.selectbox("Select Y-axis", df.columns)
-                    
-                    # Create interactive plot
-                    fig = px.line(df, x=x_col, y=y_col, title=f"{y_col} vs {x_col}")
-                    st.plotly_chart(fig)
-                    
-            except Exception as e:
-                st.error(f"Error processing file: {str(e)}")
-    
-
 
     with tab1:
         create_sensor_section()
+            
+    with tab2:
+        st.header("Device Data Upload")
+        os.makedirs("1.rawdata", exist_ok=True)
         
+        expected_files = [
+            "leftgyroscopewatch",
+            "leftaccelerometerwatch",
+            "rightgyroscopewatch",
+            "rightaccelerometerwatch",
+            "phonedata",
+            "earbuddata"
+        ]
+        
+        uploaded_files = {}
+        
+        col1, col2 = st.columns(2)
+        for i, file_name in enumerate(expected_files):
+            with (col1 if i < 3 else col2):
+                file = st.file_uploader(
+                    f"Upload {file_name}.csv",
+                    type=['csv'],
+                    key=file_name
+                )
+                
+                if file is not None:
+                    file_path = os.path.join("1.rawdata", f"{file_name}.csv")
+                    with open(file_path, "wb") as f:
+                        f.write(file.getvalue())
+                    uploaded_files[file_name] = file_path
+                    st.success(f"✅ {file_name}.csv has been saved!")
 
-   
+        st.write("---")
+        files_uploaded = len(uploaded_files) == len(expected_files)
+        if st.button("Process Files", key="process_button", disabled=not files_uploaded):
+            process_uploaded_files(uploaded_files)
+
 
     
     # 3D Pose Video Tab
@@ -671,6 +685,22 @@ def data_analysis_page():
                 except Exception as e:
                     st.error(f"Error processing video: {str(e)}")
                     st.info("Please ensure the video file is not corrupted and is a valid MP4 format.")
+
+
+
+
+def process_uploaded_files(uploaded_files, output_dir='output/'):
+    try:
+        st.info("Processing started...")
+        os.makedirs(output_dir, exist_ok=True) # Create output directory if it doesn't exist
+        full_sensor_pipeline()
+        st.success("Processing complete!")
+        
+    except Exception as e:
+        st.error(f"Error during processing: {str(e)}")
+        raise
+    
+
 
 def main():
     """Main function to run the Streamlit app"""
