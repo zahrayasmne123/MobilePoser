@@ -30,11 +30,10 @@ class IMUDataProcessor:
             
         return processed_data
         
-    def load_imu_data(self, left_path, right_path):
-        """Load and combine IMU data from left and right sensor files."""
+    def load_imu_data(self, left_path):
+        """Load IMU data from left sensor file."""
         # Load the tensor data
         left_data = torch.load(left_path)['imu_data']
-        right_data = torch.load(right_path)['imu_data']
         
         n_frames = left_data.shape[0]
         print(f"Processing {n_frames} frames of IMU data")
@@ -44,21 +43,13 @@ class IMUDataProcessor:
         
         # Process each frame
         for i in range(n_frames):
-            # Get base frame data from left sensor
+            # Get frame data from left sensor
             frame_data = self.process_frame(left_data[i])
-            
-            # Override right pocket sensor data (4th sensor position)
-            right_pocket_start = 3 * 12  # 4th sensor position (0-based index)
-            right_pocket_data = right_data[i, right_pocket_start:right_pocket_start + 12]
-            
-            # Apply right pocket data
-            frame_data[right_pocket_start:right_pocket_start + 12] = right_pocket_data
-            
             imu_input[i] = frame_data
-            
+                
         print(f"Final input shape: {imu_input.shape}")
         return imu_input
-    
+        
     def predict_pose(self, imu_data):
         """Generate pose predictions from processed IMU data."""
         with torch.no_grad():
@@ -80,8 +71,7 @@ def main():
     try:
         # Load and process IMU data
         imu_data = processor.load_imu_data(
-            data_dir / "mobileposer_data_left.pt",
-            data_dir / "mobileposer_data_right.pt"
+            data_dir / "mobileposer_data.pt",
         )
         
         # Generate predictions
