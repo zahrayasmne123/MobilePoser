@@ -1,8 +1,8 @@
 import torch
 from pathlib import Path
-import numpy as np
 from mobileposer.viewers import SMPLViewer
-from mobileposer.config import *
+from mobileposer.config import *  # noqa: F403
+from mobileposer.articulate.model import ParametricModel
 
 class PredictionViewer(SMPLViewer):
     """Extension of SMPLViewer for prediction-only visualization."""
@@ -16,17 +16,10 @@ class PredictionViewer(SMPLViewer):
         super().view(pose_p, tran_p, pose_t, tran_t, with_tran=True)
 
 def visualize_predictions(pred_path):
-    """Visualize the predictions using SMPLViewer."""
+    """Visualize and save the predictions using SMPLViewer."""
     # Load predictions
     print("Loading predictions from:", pred_path)
     predictions = torch.load(pred_path, map_location='cpu')
-    
-    # Print available keys and their types
-    print("\nPrediction data contains:")
-    for key, value in predictions.items():
-        print(f"{key}: {type(value)}")
-        if isinstance(value, torch.Tensor):
-            print(f"  Shape: {value.shape}")
     
     # Extract the predicted poses and translations
     pose = predictions.get('pose')
@@ -37,20 +30,18 @@ def visualize_predictions(pred_path):
     if translation is None:
         raise ValueError("No translation data found in predictions")
     
-    print("\nPose shape:", pose.shape)
-    print("Translation shape:", translation.shape)
+    # Initialize the parametric model
+    model = ParametricModel(paths.smpl_file)
     
-    # Check SMPL model file
-    smpl_path = paths.smpl_file
-    if not smpl_path.exists():
-        raise FileNotFoundError(f"SMPL model file not found at {smpl_path}")
-    print("\nSMPL model file found at:", smpl_path)
+    # View and save the motion - this will create 'a.mp4' in your current directory
+    model.view_motion(
+        pose_list=[pose],        # List of pose tensors
+        tran_list=[translation], # List of translation tensors
+        fps=30,                  # Frame rate of output video
+        distance_between_subjects=0.8  # Space between subjects if showing multiple
+    )
     
-    # Initialize viewer
-    viewer = PredictionViewer()
-    
-    # View the predictions
-    viewer.view_predictions(pose, translation)
+    print("\nVisualization saved as 'a.mp4' in the current directory")
 
 if __name__ == "__main__":
     # Path to your predictions file
