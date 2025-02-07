@@ -10,7 +10,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 make: *** No rule to make target `all'.  Stop.
 
 
-# Make data base, printed on Thu Feb  6 15:31:23 2025
+# Make data base, printed on Fri Feb  7 19:39:51 2025
 
 # Variables
 
@@ -71,7 +71,7 @@ HOME = /Users/zahrarahman
 # default
 MAKEFILEPATH = $(shell /usr/bin/xcode-select -print-path 2>/dev/null || echo /Developer)/Makefiles
 # environment
-VSCODE_CODE_CACHE_PATH = /Users/zahrarahman/Library/Application Support/Code/CachedData/cd4ee3b1c348a13bafd8f9ad8060705f6d4b9cba
+VSCODE_CODE_CACHE_PATH = /Users/zahrarahman/Library/Application Support/Code/CachedData/33fc5a94a3f99ebe7087e8fe79fbe1d37a251016
 # environment
 LOGNAME = zahrarahman
 # environment
@@ -115,7 +115,7 @@ TMPDIR = /var/folders/pc/zbr7wnhn7psd00ft8hnc73jm0000gn/T/
 # automatic
 *F = $(notdir $*)
 # environment
-VSCODE_IPC_HOOK = /Users/zahrarahman/Library/Application Support/Code/1.96-main.sock
+VSCODE_IPC_HOOK = /Users/zahrarahman/Library/Application Support/Code/1.97-main.sock
 # environment
 MallocNanoZone = 0
 # makefile
@@ -127,7 +127,7 @@ MFLAGS = -Rrqp
 # environment
 NVM_DIR = /Users/zahrarahman/.nvm
 # environment
-XPC_SERVICE_NAME = application.com.microsoft.VSCode.38877787.38877793
+XPC_SERVICE_NAME = application.com.microsoft.VSCode.38966833.38966840
 # environment
 HOMEBREW_PREFIX = /opt/homebrew
 # automatic
@@ -157,7 +157,7 @@ MAKELEVEL := 0
 # environment
 CONDA_PREFIX = /Users/zahrarahman/miniconda3
 # environment
-VSCODE_PID = 18093
+VSCODE_PID = 57038
 # environment
 LANG = C
 # variable set hash-table stats:
@@ -169,9 +169,9 @@ LANG = C
 
 # Directories
 
-# . (device 16777232, inode 35828273): 21 files, no impossibilities.
+# . (device 16777232, inode 35828273): 25 files, no impossibilities.
 
-# 21 files, no impossibilities in 1 directories.
+# 25 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -243,6 +243,6 @@ GNUmakefile:
 # strcache size: total = 0 / max = 0 / min = 4096 / avg = 0
 # strcache free: total = 0 / max = 0 / min = 4096 / avg = 0
 
-# Finished Make data base on Thu Feb  6 15:31:23 2025
+# Finished Make data base on Fri Feb  7 19:39:51 2025
 
  
