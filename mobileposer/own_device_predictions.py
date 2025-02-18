@@ -60,7 +60,7 @@ class IMUDataProcessor:
             )
         return pose, tran, joints, contact
 
-def main():
+def predict():
     # Setup paths
     data_dir = Path("data/processed_datasets")  # Adjust as needed
     model_path = paths.weights_file  # From config.py
@@ -93,5 +93,4 @@ def main():
         traceback.print_exc()
         print("\nPlease check your data structure and try again.")
 
-if __name__ == "__main__":
-    main()
+predict()
