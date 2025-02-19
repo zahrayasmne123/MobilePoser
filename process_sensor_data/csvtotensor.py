@@ -68,6 +68,6 @@ def create_mobileposer_tensor(dfs_list):
     print(f"✓ Expected shape: ({n_frames}, 60)")
     
     # Save tensor
-    torch.save({'imu_data': tensor}, 'mobileposer_data.pt')
+    torch.save({'imu_data': tensor}, 'data/processed_datasets/mobileposer_data.pt')
     print("\nSaved tensor to mobileposer_data.pt")
     return tensor
