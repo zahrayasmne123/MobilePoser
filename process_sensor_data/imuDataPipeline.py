@@ -1,10 +1,10 @@
-from finalpipeline.phone_processor import PhoneSensorAligner
-from finalpipeline.watch_processor import WatchSensorAligner
-from finalpipeline.earbuds_processor import EarbudSensorAligner
-from finalpipeline.rotation_processor import robust_rotation_matrices_dataframes
-from finalpipeline.synchronise_dataframes import robust_synchronise_dataframes
-from finalpipeline.csvtotensor import create_mobileposer_tensor
-from finalpipeline.trim_timestamps import trim_dataframes
+from .phone_processor import PhoneSensorAligner
+from .watch_processor import WatchSensorAligner
+from .earbuds_processor import EarbudSensorAligner
+from .rotation_processor import robust_rotation_matrices_dataframes
+from .synchronise_dataframes import robust_synchronise_dataframes
+from .csvtotensor import create_mobileposer_tensor
+from .trim_timestamps import trim_dataframes
 
 import os
 import pandas as pd
@@ -79,7 +79,7 @@ def process_aligned_sensor_data(aligned_dfs, df_names=None):
     return synced_dfs, tensor
 
 
-def full_sensor_pipeline(data_dir='1.data/'):
+def full_sensor_pipeline(data_dir='1.rawdata'):
     # Step 1: Align sensor data
     print("Aligning sensor data...")
     aligned_dfs = align_all_sensor_data(data_dir)
@@ -91,23 +91,3 @@ def full_sensor_pipeline(data_dir='1.data/'):
     return synced_dfs, tensor
 
 
-# Example usage:
-def main():
-    try:
-        # Run the full pipeline
-        synced_dfs, tensor = full_sensor_pipeline()
-        
-        # Print final results
-        print("\nFinal Processing Results:")
-        print("------------------------")
-        print(f"Tensor shape: {tensor.shape}")
-        df_names = ['Phone', 'Earbud', 'Left Watch', 'Right Watch']
-        for i, df in enumerate(synced_dfs):
-            print(f"{df_names[i]} final shape: {df.shape}")
-            
-    except Exception as e:
-        print(f"Error during processing: {str(e)}")
-        raise
-
-if __name__ == "__main__":
-    main()
