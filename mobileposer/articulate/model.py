@@ -326,3 +326,36 @@ class ParametricModel:
             tran = tran_list[i].view(-1, 3) - tran_list[i].view(-1, 3)[:1] if tran_list else None
             verts.append(self.forward_kinematics(pose, tran=tran, calc_mesh=True)[2])
         self.view_mesh(verts, fps, colors=colors, distance_between_subjects=distance_between_subjects)
+
+    def save_motion_sequence(self, pose_list: list, tran_list: list = None, output_path='motion_output.mp4', fps=60):
+        """
+        Save motion sequence without visualization.
+        
+        Args:
+            pose_list: List in length [num_subject] of tensors that can reshape to [num_frame, num_joint, 3, 3]
+            tran_list: List in length [num_subject] of tensors that can reshape to [num_frame, 3]
+            output_path: Path to save the output video file
+            fps: Frames per second for the output video
+        """
+        import vctoolkit.viso3d as vo3d
+        
+        verts = []
+        for i in range(len(pose_list)):
+            pose = pose_list[i].view(-1, len(self.parent), 3, 3)
+            tran = tran_list[i].view(-1, 3) - tran_list[i].view(-1, 3)[:1] if tran_list else None
+            verts.append(self.forward_kinematics(pose, tran=tran, calc_mesh=True)[2])
+        
+        # Process vertices and faces
+        v_list, f_list = [], []
+        f = self.face.copy()
+        for i in range(len(verts)):
+            v = verts[i].clone().view(-1, self._v_template.shape[0], 3)
+            v_list.append(v)
+            f_list.append(f.copy())
+            f += v.shape[1]
+
+        verts = torch.cat(v_list, dim=1).cpu().numpy()
+        faces = np.concatenate(f_list)
+        
+        # Render without displaying
+        vo3d.render_sequence_3d(verts, faces, 720, 720, output_path, fps, visible=False)
