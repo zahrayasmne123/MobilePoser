@@ -3,6 +3,14 @@ import cv2 # type: ignore
 import os
 from pathlib import Path
 from process_sensor_data.imuDataPipeline import full_sensor_pipeline
+from mobileposer.own_device_predictions import predict
+import torch
+from frontend.analysis.joints import process_joint_angles
+from frontend.analysis.speed import process_movement_speed
+from frontend.analysis.accuracy import process_pose_accuracy
+import numpy as np
+import pandas as pd
+
 ############# DATA ANALYSIS PAGE ######################
 
 def data_analysis_page():
@@ -175,15 +183,96 @@ def data_analysis_page():
                         st.subheader("Analysis Results")
                         st.info("Select options below to analyze the video:")
                         
-                        # # Add some example analysis options
-                        # analysis_type = st.selectbox(
-                        #     "Choose Analysis Type",
-                        #     ["Joint Angles", "Movement Speed", "Motion Path", "Pose Accuracy"]
-                        # )
+                        analysis_type = st.selectbox(
+                            "Choose Analysis Type",
+                            ["Joint Angles", "Movement Speed", "Pose Accuracy"]
+                        )
                         
-                        # if st.button("Run Analysis", use_container_width=True):
-                        #     st.info("Analysis feature coming soon!")
-                    
+                        if analysis_type == "Joint Angles":
+                            try:
+                                # Load predictions
+                                predictions = torch.load('data/processed_datasets/predictions.pt')
+                                st.write("### Joint Angle Analysis")
+                                st.write("The joint angle analysis shows how the angles between connected body segments change over time using the dot product. For example the knee angle is calculated between hip, knee and ankle joint and the elbow joint is calculated between the shoulder, elbow and wrist joint.")
+
+
+                                # Add debug information
+                                if isinstance(predictions, dict) and 'joints' in predictions: 
+                                    angles = process_joint_angles(predictions)
+                                    for joint, angle_values in angles.items():
+                                        st.write(f"**{joint.replace('_', ' ').title()}**")
+                                        st.write(f"- Average angle: {np.mean(angle_values):.2f}°")
+                                        
+                            except Exception as e:
+                                st.error(f"Error processing joint angles: {str(e)}")
+                                # Print more detailed error information
+                                st.write("Error details:", str(e))
+                        elif analysis_type == "Movement Speed":
+                            try:
+                                # Load predictions with proper error handling
+                                predictions = torch.load('data/processed_datasets/predictions.pt')
+
+                                speeds, stats = process_movement_speed(predictions)
+                                
+                                # Create chart data
+                                speed_data = pd.DataFrame(speeds)
+                                
+                                # Display the line chart
+                                st.write("### Movement Speed Analysis")
+                                st.write("The speed graph shows the velocity (in centimeters per second) of different key body parts over time throughout your motion sequence.")
+                                st.write("Peaks in the graph: These represent moments of fast movement for that body part")
+                                st.write("Valleys or low points: These show when that body part is moving slowly or is relatively still")
+                            
+                                st.line_chart(speed_data)
+                                
+
+                                        
+                            except Exception as e:
+                                st.error(f"Error processing movement speeds: {str(e)}")
+                                st.write("Full error details:", str(e))
+                                import traceback
+                                st.write("Traceback:", traceback.format_exc())
+
+                        elif analysis_type == "Pose Accuracy":
+                            try:
+                                # Load predictions
+                                predictions = torch.load('data/processed_datasets/predictions.pt')
+                                
+                                # Process pose accuracy
+                                metrics, stats = process_pose_accuracy(predictions)
+                                
+                            
+                                # Show statistics
+                                st.write("### Accuracy Statistics")
+                                
+                                # Create columns for each metric
+                                cols = st.columns(len(stats))
+                                
+                                for i, (metric, metric_stats) in enumerate(stats.items()):
+                                    with cols[i]:
+                                        st.metric(
+                                            label=metric.replace('_', ' ').title(),
+                                            value=f"{metric_stats['average']:.2f}",
+                                            delta=f"Range: {metric_stats['min']:.2f} - {metric_stats['max']:.2f}"
+                                        )
+                                
+                                # Detailed explanation
+                                st.write("### Metrics Explanation")
+                                st.write("""
+                                - **Smoothness**: Measures motion smoothness, indicating control and coordination
+                                - **Symmetry Score**: Measures left-right body symmetry and can help to detect muscle imbalances 
+                                - **Posture Score**: Measures overall posture alignment, this is important as poor posture can lead to back pain and neck strain
+                                """)
+                                
+                            except Exception as e:
+                                st.error(f"Error processing pose accuracy: {str(e)}")
+                                st.write("Error details:", str(e))
+
+                            
+
+
+
+                                
                 except Exception as e:
                     st.error(f"Error processing video: {str(e)}")
                     st.info("Please ensure the video file is not corrupted and is a valid MP4 format.")
@@ -405,12 +494,41 @@ def create_sensor_section():
 
 def process_uploaded_files(uploaded_files, output_dir='output/'):
     try:
-        st.info("Processing start...")
-        full_sensor_pipeline()
- 
-        st.success("Processing complete!")
+        st.info("Starting pipeline processing...")
         
+        # Run pipeline with progress updates
+        st.text("Step 1: Processing sensor data...")
+        synced_dfs, tensor = full_sensor_pipeline()
+        st.text("✓ Sensor data processed")
+        
+        st.text("Step 2: Running model predictions...")
+        predict()
+        st.text("✓ Predictions complete")
+        
+        st.text("Step 3: Creating visualizations...")
+        # Use the process handler instead of direct visualization
+        from mobileposer.process_handler import run_visualization_process
+        
+        pred_path = Path("data/processed_datasets/predictions.pt")
+        success, message = run_visualization_process(pred_path)
+        
+        if success:
+            st.text("✓ Visualization complete")
+            st.success("Processing complete!")
+        else:
+            st.error(f"Visualization failed: {message}")
+            
     except Exception as e:
-        st.error(f"Error during processing: {str(e)}")
+        st.error(f"""
+        Error during processing: {str(e)}
+        
+        This might be due to:
+        1. Missing or corrupted model file
+        2. Incorrect file paths
+        3. Incompatible data format
+        
+        Please check the console for detailed error messages.
+        """)
         raise
-    
+        
+ 
