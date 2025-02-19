@@ -70,13 +70,6 @@ def process_movement_speed(predictions_dict):
         # Add a zero at the start since we can't calculate speed for the first frame
         for key in speeds:
             speeds[key].insert(0, 0)
-            
-        # Print some statistics for debugging
-        for key in speeds:
-            print(f"\n{key} statistics:")
-            print(f"Mean: {np.mean(speeds[key]):.2f}")
-            print(f"Max: {np.max(speeds[key]):.2f}")
-            print(f"Non-zero values: {sum(v > 0.1 for v in speeds[key])}")
         
         # Calculate statistics
         stats = {}
