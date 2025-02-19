@@ -1,10 +1,4 @@
 import streamlit as st # type: ignore
-from pathlib import Path
-import cv2 # type: ignore
-import os
-# import torch 
-# from process_sensor_data.imuDataPipeline import full_sensor_pipeline
-# from mobileposer.own_device_predictions import predict
 from pages.documentation import documentation_help_page
 from pages.analysis import data_analysis_page
 from pages.about import about_us_page
@@ -389,20 +383,6 @@ def home_page():
         - Patient progress monitoring
         """)
 
-
-
-def process_uploaded_files(uploaded_files, output_dir='output/'):
-    try:
-        st.info("Processing started...")
-        # os.makedirs(output_dir, exist_ok=True) # Create output directory if it doesn't exist
-        # full_sensor_pipeline()
-        # predict()
-        # st.success("Processing complete!")
-        
-    except Exception as e:
-        st.error(f"Error during processing: {str(e)}")
-        raise
-    
 
 
 def main():
