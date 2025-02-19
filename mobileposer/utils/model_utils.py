@@ -7,12 +7,24 @@ def load_model(model_path: str):
     """Load MobilePoser model."""
     from mobileposer.models import MobilePoserNet
     device = model_config.device
-    try: 
+    
+    # Try direct PyTorch loading first
+    try:
         model = MobilePoserNet().to(device)
-        model.load_state_dict(torch.load(model_path, map_location=device))
-    except:
-        model = MobilePoserNet.load_from_checkpoint(model_path)
-    return model
+        state_dict = torch.load(model_path, map_location=device)
+        
+        # If it's a regular state dict
+        if not isinstance(state_dict, dict) or 'state_dict' not in state_dict:
+            model.load_state_dict(state_dict)
+        else:
+            # If it's a Lightning checkpoint
+            model.load_state_dict(state_dict['state_dict'])
+        
+        return model
+        
+    except Exception as e:
+        print(f"Error loading model: {str(e)}")
+        raise
 
 
 def reduced_pose_to_full(reduced_pose):

@@ -61,18 +61,28 @@ class IMUDataProcessor:
         return pose, tran, joints, contact
 
 def predict():
-    # Setup paths
-    data_dir = Path("data/processed_datasets")  # Adjust as needed
-    model_path = paths.weights_file  # From config.py
-    
-    # Initialize processor
-    processor = IMUDataProcessor(model_path)
-    
     try:
+        # Setup paths more robustly
+        base_dir = Path(__file__).parent.parent
+        data_dir = base_dir / "data" / "processed_datasets"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Ensure weights file path is absolute
+        model_path = Path(paths.weights_file).resolve()
+        
+        print(f"Loading model from: {model_path}")
+        print(f"Data directory: {data_dir}")
+        
+        # Initialize processor
+        processor = IMUDataProcessor(str(model_path))
+        
+        input_file = data_dir / "mobileposer_data.pt"
+        output_file = data_dir / "predictions.pt"
+        
+        print(f"Looking for input file: {input_file}")
+        
         # Load and process IMU data
-        imu_data = processor.load_imu_data(
-            data_dir / "mobileposer_data.pt",
-        )
+        imu_data = processor.load_imu_data(input_file)
         
         # Generate predictions
         pose, tran, joints, contact = processor.predict_pose(imu_data)
@@ -84,13 +94,12 @@ def predict():
             'joints': joints.cpu(),
             'foot_contact': contact.cpu()
         }
-        torch.save(output, data_dir / "predictions.pt")
-        print("\nSuccessfully generated and saved predictions!")
+        torch.save(output, output_file)
+        print(f"\nSuccessfully saved predictions to {output_file}!")
         
     except Exception as e:
-        print(f"\nError processing data: {str(e)}")
+        print(f"\nError in predict(): {str(e)}")
         import traceback
         traceback.print_exc()
         print("\nPlease check your data structure and try again.")
-
-predict()
+        raise
