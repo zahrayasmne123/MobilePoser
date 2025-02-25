@@ -8,8 +8,8 @@ class WatchSensorAligner:
     
 
     def __init__(self):
-       self.timestamp_columns = ['timestamp (+0000)', 'timestamp']
-       self.epoch_columns = ['epoc (ms)', 'epoch']
+       self.timestamp_columns = ['timestamp (+0000)', 'timestamp', 'time (-00:00)']
+       self.epoch_columns = ['epoc (ms)', 'epoch', 'epoch (ms)']
        self.elapsed_columns = ['elapsed (s)']
        self.expected_columns = {
            'accel': ['x-axis (g)', 'y-axis (g)', 'z-axis (g)'],
