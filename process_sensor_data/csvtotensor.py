@@ -6,6 +6,19 @@ def validate_input_data(dfs, device_names):
     print("\nValidating input data:")
     print("-" * 50)
     
+    # Filter out None values from dfs and device_names
+    valid_dfs = []
+    valid_device_names = []
+    for df, name in zip(dfs, device_names):
+        if df is not None:
+            valid_dfs.append(df)
+            valid_device_names.append(name)
+
+    if not valid_dfs:
+        raise ValueError("No valid dataframes to process")
+    
+    
+
     expected_cols = ['timestamp'] + [f'{ax}-axis (m/s^2)' for ax in ['x', 'y', 'z']] + \
                    [f'R{i}{j}' for i in range(3) for j in range(3)]
     
