@@ -145,7 +145,7 @@ def data_analysis_page():
     with tabs[2]:
         st.header("3D Pose Video Analysis")
         
-        video_files = list(Path('.').glob('*.mp4'))
+        video_files = sorted(list(Path('.').glob('*.mp4')))
         if not video_files:
             st.warning("No MP4 files found in the current directory.")
         else:
